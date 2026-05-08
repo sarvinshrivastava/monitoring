@@ -1,7 +1,3 @@
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-COPY . .
-EXPOSE 3000
-CMD ["node", "src/index.js"]
+FROM alpine:latest
+RUN echo "monitoring stack — no custom image needed"
+CMD ["echo", "use docker-compose.yml directly"]

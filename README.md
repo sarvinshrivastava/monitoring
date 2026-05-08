@@ -1,61 +1,35 @@
-# VPS Service Template
+# Monitoring Stack
 
-A GitHub Template Repository for deploying Node.js services to the VPS at `*.vps.sarvinshrivastava.space`.
+VPS monitoring stack — Grafana + Prometheus + Uptime Kuma.
 
-## Using this template
+## Services
 
-1. Click **"Use this template"** on GitHub and name your new repo (e.g. `notion-cache`)
-2. Add a single GitHub secret to your new repo:
-   - `SM_READ_TOKEN` — the read token for the secrets-manager
-3. Add your service's secrets to secrets-manager under the `SERVICENAME_*` prefix (see convention below)
-4. Push to `main` — the workflow auto-deploys your service
+| Service | URL | Notes |
+|---------|-----|-------|
+| Grafana | https://monitoring.vps.sarvinshrivastava.space | Dashboards + alerting |
+| Uptime Kuma | https://status.vps.sarvinshrivastava.space | Public status page |
+| Prometheus | internal only (port 9090) | Metrics scraping |
 
-The VPS deploy script handles everything else: port assignment, Nginx vhost creation, and SSL via the wildcard cert at `*.vps.sarvinshrivastava.space`.
+## Grafana Dashboards to Import
 
-## Secret naming convention
+After logging in to Grafana, import these dashboards by ID:
 
-Secrets in secrets-manager are namespaced by service name. The prefix is derived by uppercasing the repo name and replacing hyphens with underscores:
+- **Node Exporter Full** — ID `1860` (system metrics: CPU, memory, disk, network)
+- **Docker Container Stats** — ID `11600` (per-container resource usage)
 
-| Repo / service name | Secrets prefix    | Example secret          |
-|---------------------|-------------------|-------------------------|
-| `notion-cache`      | `NOTION_CACHE_`   | `NOTION_CACHE_API_KEY`  |
-| `webhook-relay`     | `WEBHOOK_RELAY_`  | `WEBHOOK_RELAY_SECRET`  |
-| `my-api`            | `MY_API_`         | `MY_API_DATABASE_URL`   |
+## Stack
 
-At deploy time, `vps-deploy` fetches all secrets matching your service's prefix, strips the prefix, and writes them to `.env` inside the container.
+- **Prometheus** — scrapes node-exporter (host metrics) and cAdvisor (container metrics)
+- **node-exporter** — exposes host OS metrics
+- **cAdvisor** — exposes Docker container metrics
+- **Grafana** — visualises Prometheus data; Prometheus datasource auto-provisioned
+- **Uptime Kuma** — uptime monitoring with status page
 
-## Adding secrets to secrets-manager
+## Secrets (managed via secrets-manager)
 
-```bash
-curl -X POST https://secrets.vps.sarvinshrivastava.space/api/secrets \
-  -H "X-API-Key: <ADMIN_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"key":"NOTION_CACHE_API_KEY","value":"your-value","folder":"Root"}'
-```
-
-## What gets deployed
-
-- Your service runs inside a Docker container built from the `Dockerfile`
-- It is assigned a unique port automatically (starting at 3001, tracked in `/etc/vps-registry/ports.json`)
-- An Nginx vhost is created at `<service-name>.vps.sarvinshrivastava.space` with HTTPS
-- The container restarts automatically (`unless-stopped`)
-
-## Local development
-
-```bash
-cp .env.example .env
-# fill in .env values
-npm install
-npm run dev
-```
-
-## Project structure
-
-```
-├── .github/workflows/deploy.yml  # CI/CD — only needs SM_READ_TOKEN secret
-├── src/index.js                   # Entry point — replace with your code
-├── Dockerfile
-├── docker-compose.yml
-├── package.json
-└── .env.example
-```
+| Secret key | Purpose |
+|------------|---------|
+| `MONITORING_GRAFANA_USER` | Grafana admin username |
+| `MONITORING_GRAFANA_PASSWORD` | Grafana admin password |
+| `MONITORING_APP_PORT` | Host port for Grafana (3100) |
+| `MONITORING_UPTIME_PORT` | Host port for Uptime Kuma (3101) |
